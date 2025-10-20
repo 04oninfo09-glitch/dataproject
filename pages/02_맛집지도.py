@@ -4,13 +4,14 @@ import pandas as pd
 from streamlit_folium import st_folium
 import folium
 
+# 페이지 기본 설정
 st.set_page_config(page_title="서울 구별 맛집 추천 🍽️", layout="wide")
 
+# 타이틀 & 설명
 st.title("서울 구별 맛집 추천 — 찐맛집만 골라왔음 ✨")
-st.caption("구를 선택하면 해당 구의 추천 맛집을 보여줘요. 지도에서 Top10도 확인 가능! 📍")
+st.caption("서울의 각 구별로 맛집을 추천받고, 함께 가기 좋은 사람 유형과 인원도 알아보자! 📍")
 
-# --- 데이터: Top10 예시(간단 정보 포함) ---
-# (실사용 시엔 API/DB로 대체 권장)
+# --- 데이터: 서울 주요 맛집 Top 10 예시 ---
 data = [
     {
         "name": "Jungsik (정식당)",
@@ -126,36 +127,40 @@ data = [
 
 df = pd.DataFrame(data)
 
-# --- 사이드바: 구 선택 ---
+# --- 구 선택창 (타이틀 바로 아래) ---
+st.markdown("### 📍 구 선택하기")
 gus = ["전체"] + sorted(df['gu'].unique().tolist())
-selected_gu = st.sidebar.selectbox("구 선택 (필터)", gus)
+selected_gu = st.selectbox("서울의 구를 골라보자 👇", gus, key="gu_selector")
 
-# --- 메인: 리스트 표시 ---
-st.subheader("추천 맛집 리스트")
+# --- 맛집 리스트 표시 ---
+st.subheader("🍽️ 추천 맛집 리스트")
 if selected_gu != "전체":
     filtered = df[df['gu'] == selected_gu]
 else:
     filtered = df
 
-for _, row in filtered.iterrows():
-    st.markdown(f"### {row['emoji']} {row['name']} — {row['gu']}")
-    st.write(f"**설명:** {row['desc']}")
-    st.write(f"**어울리는 사람 유형:** {row['people']}  •  **추천 인원:** {row['size']}")
-    st.write(f"[출처 정보 보기]({row['source']})")
-    st.divider()
+if len(filtered) == 0:
+    st.info("선택한 구에 해당하는 맛집 데이터가 없습니다 😅")
+else:
+    for _, row in filtered.iterrows():
+        st.markdown(f"### {row['emoji']} {row['name']} — {row['gu']}")
+        st.write(f"**설명:** {row['desc']}")
+        st.write(f"**어울리는 사람 유형:** {row['people']}  •  **추천 인원:** {row['size']}")
+        st.write(f"[출처 보기]({row['source']})")
+        st.divider()
 
-# --- Folium 지도: Top10 마커 표시 ---
-st.subheader("서울 주요 맛집 Top 10 지도 🗺️")
-# 초기 지도 중심: 서울 중심
+# --- Folium 지도 표시 ---
+st.subheader("🗺️ 서울 주요 맛집 Top 10 지도")
+
+# 초기 지도 중심
 m = folium.Map(location=[37.5665, 126.9780], zoom_start=12, tiles="OpenStreetMap")
 
-# 사용자 선택한 구를 강조해서 줌하는 옵션
+# 선택한 구 중심으로 줌 이동
 if selected_gu != "전체" and len(filtered) > 0:
-    # 중심을 해당 구의 첫 장소로
     center = [filtered.iloc[0]['lat'], filtered.iloc[0]['lon']]
     m = folium.Map(location=center, zoom_start=13, tiles="OpenStreetMap")
 
-# 마커 추가 (Top10)
+# 마커 표시
 for i, r in df.iterrows():
     popup_html = f"""
     <b>{r['emoji']} {r['name']}</b><br/>
@@ -170,16 +175,16 @@ for i, r in df.iterrows():
         icon=folium.Icon(color="red" if i == 0 else "blue", icon="cutlery", prefix="fa")
     ).add_to(m)
 
-# 지도 렌더
+# 지도 렌더링
 st_data = st_folium(m, width=900, height=500)
 
-# --- 하단: 노트 및 팁 ---
+# --- 하단 안내 ---
 st.markdown("---")
 st.markdown("""
-**팁**  
-- 예약이 필요한 곳(Jungsik, Mingles 등)은 사전 예약 추천! 📅  
-- 시장(광장시장, 노량진 등)은 줄과 붐빔을 각오해라... 근데 그게 매력임 😆  
-- 데이터를 더 업데이트해서 동적 검색(메뉴, 가격대, 예약링크 등)을 넣어볼래? 그럼 DB 연결해줄게! 💾
+**🍴 팁**  
+- 예약 필수 맛집은 미리미리 예약하기 📅  
+- 시장이나 푸드존은 붐벼도 분위기가 찐이에요 😆  
+- 이 앱에 메뉴·가격대·사진까지 추가하고 싶다면, 다음 버전에서 바로 업그레이드 가능! 🚀
 """)
 
-st.caption("데이터 출처(예시): MICHELIN, Tripadvisor, Eater, 여행 블로그 등(간단 표본). 실제 앱에선 최신화 권장.")
+st.caption("데이터 출처: MICHELIN, Tripadvisor, Eater 등. (예시용)")
